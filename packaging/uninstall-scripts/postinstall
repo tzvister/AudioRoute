@@ -1,0 +1,47 @@
+#!/bin/bash
+# Package-only uninstall. Preserve personal scenarios and shared audio state.
+set -euo pipefail
+fail() { echo "AudioRoute uninstall: $*" >&2; exit 1; }
+[[ "${3:-/}" == / && "$EUID" == 0 ]] || fail "Uninstall from the current startup disk with administrator approval."
+
+daemon_running() {
+  local result=0
+  /usr/bin/pgrep -x audiorouted >/dev/null 2>&1 || result=$?
+  case "$result" in
+    0) return 0;;
+    1) return 1;;
+    *) fail "Could not inspect AudioRoute processes; no installed files were removed.";;
+  esac
+}
+if daemon_running; then
+  result=0
+  /usr/bin/pkill -TERM -x audiorouted || result=$?
+  [[ "$result" == 0 || "$result" == 1 ]] || fail "Could not stop AudioRoute; no installed files were removed."
+  for attempt in {1..50}; do
+    if ! daemon_running; then break; fi
+    /bin/sleep 0.1
+  done
+fi
+if daemon_running; then fail "AudioRoute is still running. Close it and retry; no installed files were removed."; fi
+
+# Do not execute a possibly user-owned installed CLI with root privileges.
+result=0
+/bin/launchctl print system/org.audioroute.transport >/dev/null 2>&1 || result=$?
+if [[ "$result" == 0 ]]; then
+  /bin/launchctl bootout system/org.audioroute.transport || fail "Could not stop the audio transport service; no installed files were removed."
+  result=0
+  /bin/launchctl print system/org.audioroute.transport >/dev/null 2>&1 || result=$?
+  [[ "$result" == 113 || "$result" == 3 ]] || fail "Could not confirm the transport service stopped; no installed files were removed."
+elif [[ "$result" != 113 && "$result" != 3 ]]; then
+  fail "Could not inspect the audio transport service; no installed files were removed."
+fi
+
+/bin/rm -f /usr/local/bin/audioroute
+/bin/rm -rf /Applications/AudioRoute.app
+/bin/rm -rf /Library/Audio/Plug-Ins/HAL/AudioRoute.driver
+/bin/rm -f /Library/LaunchDaemons/org.audioroute.transport.plist
+if /usr/sbin/pkgutil --pkg-info org.audioroute.pkg.core >/dev/null 2>&1; then
+  /usr/sbin/pkgutil --forget org.audioroute.pkg.core >/dev/null || fail "Files were removed, but the installation receipt could not be forgotten."
+fi
+echo "AudioRoute app, CLI, driver and broker were removed. Saved scenarios and shared audio state were preserved."
+echo "Restart the Mac when convenient to unload the HAL driver from existing audio processes. No audio service was restarted."

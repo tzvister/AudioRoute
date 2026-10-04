@@ -12,7 +12,7 @@ Mix apps, instruments, and microphones. Create virtual microphones and speakers 
 
 Requires **macOS 14.2 or later**. One installer supports Apple Silicon and Intel Macs.
 
-1. **[Download the newest installer from GitHub Releases](https://github.com/tzvister/AudioRoute/releases).** Open the top release and download its `.pkg` file under **Assets**. Use the newest release, including previews; this link stays current as new versions are published.
+1. **[Download the newest installer from GitHub Releases](https://github.com/tzvister/AudioRoute/releases).** Open the top release and download its **universal installer** `.pkg` under **Assets** (the file without `uninstaller` in its name). Use the newest release, including previews; this link stays current as new versions are published.
 2. Open the `.pkg` and follow macOS Installer. Approve the administrator prompt.
 3. Restart your Mac to load the audio driver.
 4. Open Terminal and run:
@@ -56,6 +56,25 @@ Keep chatting to adjust the mix:
 > “Save this setup for my next lesson.”
 
 AudioRoute runs the audio locally. Claude Code or Codex controls it through the CLI.
+
+## Uninstall
+
+Download the **uninstaller** `.pkg` from the [newest GitHub release](https://github.com/tzvister/AudioRoute/releases). Finish any calls or recordings that use AudioRoute, open the package, approve the administrator prompt, and restart your Mac.
+
+The uninstaller removes the app, CLI, virtual audio driver, and transport service. It keeps saved routes and virtual-device configuration for a future reinstall.
+
+If you prefer Terminal:
+
+```sh
+audioroute daemon stop
+sudo launchctl bootout system/org.audioroute.transport
+sudo rm -f /Library/LaunchDaemons/org.audioroute.transport.plist
+sudo rm -rf /Library/Audio/Plug-Ins/HAL/AudioRoute.driver
+sudo rm -rf /Applications/AudioRoute.app
+sudo rm -f /usr/local/bin/audioroute
+```
+
+Restart afterward. If the daemon or transport service is already stopped, continue with removal.
 
 ## More help
 

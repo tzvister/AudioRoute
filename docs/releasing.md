@@ -4,14 +4,14 @@ The release artifact is one universal `.pkg` containing `/usr/local/bin/audiorou
 
 ## Current readiness
 
-Universal payload and unsigned installer assembly have been tested locally. The package was expanded and inspected without installation. Developer ID signing, notarization, a fresh-machine installation, and Intel audio behavior remain unverified. Do not publish the unsigned package as a trusted release. The repository is [tzvister/AudioRoute](https://github.com/tzvister/AudioRoute) and is private. Apple signing credentials have not been configured.
+Universal payload and unsigned installer assembly have been tested locally. The package was expanded and inspected without installation. Developer ID signing, notarization, a fresh-machine installation, and Intel audio behavior remain unverified. Do not publish the unsigned package as a trusted release. The repository is [tzvister/AudioRoute](https://github.com/tzvister/AudioRoute) and is public. Apple signing credentials have not been configured.
 
 ## Build and inspect locally
 
 ```sh
 scripts/build-release.sh
 scripts/package-release.sh --unsigned --output-dir build/installer-check
-python3 scripts/test-release-package.py build/installer-check/AudioRoute-0.1.0-universal-unsigned.pkg
+python3 scripts/test-release-package.py build/installer-check/AudioRoute-VERSION-universal-unsigned.pkg
 ```
 
 The build uses separate architecture scratch directories and does not overwrite the running development app. Packaging stages copies, checks architecture/minimum OS/version, signs those copies, and creates a checksum. It refuses to overwrite an existing package. Tests inspect payload paths, versions, root ownership, architecture slices, signatures and installer script syntax; they never execute installer scripts.
@@ -49,3 +49,9 @@ Signing material is imported into a temporary runner keychain and cleaned up aft
 Install the signed, stapled package through Finder on clean Apple Silicon and Intel Macs running supported macOS. Verify the welcome/conclusion pages, first admin prompt, restart/loading behavior, normal PATH invocation, setup diagnostics, capture permission ownership, actual audio, upgrades preserving saved routes, and the single-account restriction. Test a real remote lesson. No clean-machine or signed-distribution result should be inferred from the local unsigned package inspection.
 
 The shared registry currently belongs to the signed-in routing account. Existing user-owned state is verified and preserved by the installer; it is not recursively re-owned by root. Fast user switching/multi-user routing is not supported. A package upgrade requires a restart before using the new driver and background app together.
+
+## Uninstaller
+
+Build a separate removal package with `scripts/package-uninstaller.sh` (or `--unsigned` for a developer preview). It uses the same Installer signing identity and notarization credentials, requires no compiled payload, and produces a package plus checksum. The release workflow publishes both install and uninstall packages.
+
+The removal script stops AudioRoute and the transport broker, deletes only the fixed installed components, and forgets the installation receipt. Saved state is retained; Core Audio is unloaded by the user's subsequent restart. `scripts/test-uninstaller.py` exercises removal using temporary fixtures and mocked process/service commands, without uninstalling the host Mac.
