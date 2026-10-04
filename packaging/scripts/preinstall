@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+fail() { echo "AudioRoute installation: $*" >&2; exit 1; }
+[[ "${3:-/}" == / ]] || fail "Install onto the current startup disk."
+[[ "$EUID" == 0 ]] || fail "Administrator approval is required."
+owner="$(/usr/bin/stat -f '%Su' /dev/console)"
+uid="$(/usr/bin/id -u "$owner")"
+[[ "$uid" -ge 501 && "$owner" != loginwindow && "$owner" != _mbsetupuser ]] || fail "Sign in to the Mac account that will use AudioRoute, then run the installer again."
+/usr/bin/dscl . -read /Groups/_coreaudiod PrimaryGroupID >/dev/null || fail "The Core Audio service account is unavailable."
+shared="/Library/Application Support/AudioRoute"
+for path in "$shared" "$shared/devices"; do
+  [[ ! -L "$path" ]] || fail "Unsafe symbolic link at $path. Remove it before installing."
+  if [[ -e "$path" ]]; then
+    [[ -d "$path" ]] || fail "$path is not a directory."
+    [[ "$(/usr/bin/stat -f '%u' "$path")" == "$uid" ]] || fail "AudioRoute is already configured for another Mac account. This release supports one routing account per Mac."
+    [[ "$(/usr/bin/stat -f '%Su:%Sg:%Lp' "$path")" == "$owner:_coreaudiod:2750" ]] || fail "Existing shared audio folder permissions need repair before installation; no permissions were changed."
+  fi
+done
+[[ ! -d "$shared" || -d "$shared/devices" ]] || fail "Existing AudioRoute state is incomplete; repair it before installation."
+# Refuse unsafe entries before the privileged postinstall adjusts permissions.
+if [[ -d "$shared" ]]; then
+  [[ -z "$(/usr/bin/find "$shared" -type l -print -quit)" ]] || fail "The AudioRoute shared directory contains a symbolic link."
+fi
+echo "AudioRoute will configure shared audio access for $owner."

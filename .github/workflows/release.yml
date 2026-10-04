@@ -1,0 +1,180 @@
+name: Mac installer release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  installer:
+    # No pull_request, pull_request_target, or workflow_run execution with keys.
+    if: github.event_name == 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: macos-15
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      CLANG_MODULE_CACHE_PATH: ${{ github.workspace }}/.build/module-cache
+      SWIFTPM_MODULECACHE_OVERRIDE: ${{ github.workspace }}/.build/module-cache
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Validate requested tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must be vMAJOR.MINOR.PATCH." >&2
+            exit 1
+          fi
+          printf 'AUDIOROUTE_VERSION=%s\n' "${RELEASE_TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Check out exact release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify source and toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          git merge-base --is-ancestor HEAD "origin/$DEFAULT_BRANCH"
+          test "$(uname -m)" = arm64
+          xcodebuild -version
+          swift --version
+
+      - name: Test control plane, DSP, driver host and CLI
+        shell: bash
+        run: scripts/test.sh
+
+      - name: Build universal payload before importing credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/build-release.sh build/release-artifacts
+          for binary in \
+            build/release-artifacts/audioroute \
+            build/release-artifacts/AudioRoute.app/Contents/MacOS/audiorouted \
+            build/release-artifacts/AudioRoute.driver/Contents/MacOS/AudioRoute \
+            build/release-artifacts/AudioRoute.driver/Contents/Resources/AudioRouteTransportBroker; do
+            xcrun lipo -verify_arch arm64 "$binary"
+            xcrun lipo -verify_arch x86_64 "$binary"
+          done
+          python3 scripts/test-help.py build/release-artifacts/audioroute
+          python3 scripts/test-setup.py build/release-artifacts/audioroute
+          scripts/package-release.sh --unsigned --output-dir build/installer-check
+          python3 scripts/test-release-package.py "build/installer-check/AudioRoute-$AUDIOROUTE_VERSION-universal-unsigned.pkg"
+
+      - name: Import Developer ID credentials into a temporary keychain
+        shell: bash
+        env:
+          APP_CERTIFICATE_P12_BASE64: ${{ secrets.APP_CERTIFICATE_P12_BASE64 }}
+          APP_CERTIFICATE_PASSWORD: ${{ secrets.APP_CERTIFICATE_PASSWORD }}
+          INSTALLER_CERTIFICATE_P12_BASE64: ${{ secrets.INSTALLER_CERTIFICATE_P12_BASE64 }}
+          INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.INSTALLER_CERTIFICATE_PASSWORD }}
+          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          for secret, filename in [
+              ('APP_CERTIFICATE_P12_BASE64', 'audioroute-app.p12'),
+              ('INSTALLER_CERTIFICATE_P12_BASE64', 'audioroute-installer.p12'),
+              ('NOTARY_KEY_P8_BASE64', 'audioroute-notary.p8'),
+          ]:
+              value = ''.join(os.environ.get(secret, '').split())
+              if not value:
+                  raise SystemExit(f'Missing required secret: {secret}')
+              (Path(os.environ['RUNNER_TEMP']) / filename).write_bytes(base64.b64decode(value, validate=True))
+          PY
+          keychain_path="$RUNNER_TEMP/audioroute-signing.keychain-db"
+          keychain_password="$(openssl rand -hex 32)"
+          printf '::add-mask::%s\n' "$keychain_password"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 7200 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$RUNNER_TEMP/audioroute-app.p12" -P "$APP_CERTIFICATE_PASSWORD" -t cert -f pkcs12 -k "$keychain_path" -T /usr/bin/codesign
+          security import "$RUNNER_TEMP/audioroute-installer.p12" -P "$INSTALLER_CERTIFICATE_PASSWORD" -t cert -f pkcs12 -k "$keychain_path" -T /usr/bin/productsign -T /usr/bin/productbuild
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" "$HOME/Library/Keychains/login.keychain-db"
+          printf 'NOTARY_KEY_PATH=%s\n' "$RUNNER_TEMP/audioroute-notary.p8" >> "$GITHUB_ENV"
+
+      - name: Sign, notarize and staple universal installer
+        shell: bash
+        env:
+          AUDIOROUTE_APP_SIGN_IDENTITY: ${{ secrets.AUDIOROUTE_APP_SIGN_IDENTITY }}
+          AUDIOROUTE_INSTALLER_SIGN_IDENTITY: ${{ secrets.AUDIOROUTE_INSTALLER_SIGN_IDENTITY }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          scripts/package-release.sh --artifacts build/release-artifacts --output-dir dist --version "$AUDIOROUTE_VERSION"
+          package="dist/AudioRoute-$AUDIOROUTE_VERSION-universal.pkg"
+          pkgutil --check-signature "$package"
+          xcrun stapler validate "$package"
+          spctl --assess --type install --verbose "$package"
+          (cd dist && shasum -a 256 -c "AudioRoute-$AUDIOROUTE_VERSION-universal.pkg.sha256")
+
+      - name: Upload verified installer and checksum
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: AudioRoute-${{ env.AUDIOROUTE_VERSION }}-universal
+          path: |
+            dist/AudioRoute-${{ env.AUDIOROUTE_VERSION }}-universal.pkg
+            dist/AudioRoute-${{ env.AUDIOROUTE_VERSION }}-universal.pkg.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach installer to a draft GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          package="dist/AudioRoute-$AUDIOROUTE_VERSION-universal.pkg"
+          cat > "$RUNNER_TEMP/audioroute-release-notes.md" <<'NOTES'
+          Universal macOS installer for Apple Silicon and Intel Macs. Requires macOS 14.2 or later.
+
+          Download the `.pkg`, open it in Finder and follow Installer. The package installs the CLI, daemon app, virtual audio HAL plug-in and transport broker. Restart your Mac after installation, then run `audioroute setup` and `audioroute setup --start`.
+
+          The package is Developer ID signed, notarized by Apple, and stapled. A SHA-256 checksum is included. macOS microphone/system-audio permission and third-party input/output selections are still required for the sources and apps you choose.
+
+          CI checks native Apple Silicon automated tests and confirms both architecture slices exist. It does not establish real-world Intel audio behavior or a live lesson with your hardware; consult the repository's verification record.
+          NOTES
+          if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/audioroute-existing-release.json" 2>/dev/null; then
+            python3 - "$RUNNER_TEMP/audioroute-existing-release.json" <<'PY'
+          import json, sys
+          if not json.load(open(sys.argv[1]))['isDraft']:
+              raise SystemExit('Refusing to replace assets on an already published release.')
+          PY
+            gh release upload "$RELEASE_TAG" "$package" "$package.sha256" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$package" "$package.sha256" --verify-tag --draft \
+              --title "AudioRoute $AUDIOROUTE_VERSION" --notes-file "$RUNNER_TEMP/audioroute-release-notes.md"
+          fi
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/audioroute-signing.keychain-db" 2>/dev/null || true
+          rm -f -- "$RUNNER_TEMP/audioroute-app.p12" "$RUNNER_TEMP/audioroute-installer.p12" "$RUNNER_TEMP/audioroute-notary.p8"

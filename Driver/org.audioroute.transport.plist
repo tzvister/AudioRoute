@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>org.audioroute.transport</string>
+<key>ProgramArguments</key><array><string>/Library/Audio/Plug-Ins/HAL/AudioRoute.driver/Contents/Resources/AudioRouteTransportBroker</string></array>
+<key>MachServices</key><dict><key>org.audioroute.transport</key><true/></dict>
+<key>UserName</key><string>_coreaudiod</string><key>GroupName</key><string>_coreaudiod</string>
+<key>KeepAlive</key><true/>
+<key>ProcessType</key><string>Background</string>
+</dict></plist>

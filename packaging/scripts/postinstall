@@ -1,0 +1,36 @@
+#!/bin/bash
+set -euo pipefail
+fail() { echo "AudioRoute installation: $*" >&2; exit 1; }
+[[ "${3:-/}" == / && "$EUID" == 0 ]] || fail "Installation requires the current startup disk and administrator approval."
+owner="$(/usr/bin/stat -f '%Su' /dev/console)"
+uid="$(/usr/bin/id -u "$owner")"
+[[ "$uid" -ge 501 && "$owner" != loginwindow && "$owner" != _mbsetupuser ]] || fail "Sign in to the account that will use AudioRoute and run the installer again."
+shared="/Library/Application Support/AudioRoute"
+for path in "$shared" "$shared/devices"; do
+  [[ ! -L "$path" ]] || fail "Unsafe symbolic link at $path."
+  if [[ -e "$path" ]]; then
+    [[ -d "$path" && "$(/usr/bin/stat -f '%u' "$path")" == "$uid" ]] || fail "The routing account changed during installation. Sign in to the original account and retry."
+  fi
+done
+[[ ! -d "$shared" || -z "$(/usr/bin/find "$shared" -type l -print -quit)" ]] || fail "Unsafe symbolic link in the shared audio directory."
+# Preserve existing user-owned state. Never chown/chmod paths beneath a
+# user-writable directory from this privileged installer.
+if [[ ! -e "$shared" ]]; then
+  /bin/mkdir -m 750 "$shared"
+  /bin/mkdir -m 750 "$shared/devices"
+  /usr/sbin/chown "$owner":_coreaudiod "$shared/devices"
+  /bin/chmod 2750 "$shared/devices"
+  /usr/sbin/chown "$owner":_coreaudiod "$shared"
+  /bin/chmod 2750 "$shared"
+else
+  for path in "$shared" "$shared/devices"; do
+    [[ -d "$path" && ! -L "$path" ]] || fail "Existing shared audio folders need repair; no permissions were changed."
+    [[ "$(/usr/bin/stat -f '%Su:%Sg:%Lp' "$path")" == "$owner:_coreaudiod:2750" ]] || fail "Existing shared audio folder permissions need repair; no permissions were changed."
+  done
+fi
+# pkgbuild's payload owns the installed app, driver, CLI and launch plist as root.
+# An existing service remains running until the recommended Mac restart.
+if ! /bin/launchctl print system/org.audioroute.transport >/dev/null 2>&1; then
+  /bin/launchctl bootstrap system /Library/LaunchDaemons/org.audioroute.transport.plist || fail "Could not start the transport service. Restart your Mac to load the installed service."
+fi
+echo "AudioRoute installed for $owner. Restart the Mac to load the installed audio driver."

@@ -1,0 +1,27 @@
+version: 1
+scenario:
+  id: live-microphone-test
+  name: Live Microphone Test
+  target_sample_rate: 48000
+inputs:
+  voice:
+    type: device_input
+    device: coreaudio:device:BuiltInMicrophoneDevice
+    channels: [1]
+    trim_db: 0
+outputs:
+  test-send:
+    name: AudioRoute Mic Test
+    type: virtual_input
+    channels: 2
+    master_gain_db: 0
+    mix:
+      voice:
+        gain_db: 0
+        map: mono_to_stereo
+policy:
+  reconnect: true
+  disconnected_input: silence
+  disconnected_output: discard
+  clip_protection: true
+  limiter_ceiling_dbfs: -1

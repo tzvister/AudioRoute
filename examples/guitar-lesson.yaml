@@ -1,0 +1,73 @@
+version: 1
+
+scenario:
+  id: guitar-lesson
+  name: Guitar Lesson
+  target_sample_rate: 48000
+  latency_mode: low
+
+inputs:
+  guitar:
+    type: device_input
+    device: coreaudio:device:USB_INTERFACE_UID
+    channels: [1]
+    trim_db: 0
+
+  voice:
+    type: device_input
+    device: coreaudio:device:VOICE_MIC_UID
+    channels: [1]
+    trim_db: 0
+
+  teacher:
+    type: application_output
+    application: app:us.zoom.xos
+    channels: [1, 2]
+    mute_original: true
+    trim_db: 0
+
+outputs:
+  teacher-send:
+    name: Guitar Lesson Send
+    type: virtual_input
+    consumer_application: app:us.zoom.xos
+    channels: 2
+    master_gain_db: 0
+
+    mix:
+      guitar:
+        gain_db: -3
+        map: mono_to_stereo
+
+      voice:
+        gain_db: 0
+        map: mono_to_stereo
+
+      teacher:
+        mute: true
+
+  airpods:
+    name: AirPods
+    type: device_output
+    device: coreaudio:device:AIRPODS_UID
+    channels: [1, 2]
+    master_gain_db: 2
+
+    mix:
+      guitar:
+        gain_db: 3
+        map: mono_to_stereo
+
+      voice:
+        mute: true
+
+      teacher:
+        gain_db: -6
+        map: stereo
+
+policy:
+  reconnect: true
+  disconnected_input: silence
+  disconnected_output: discard
+  clip_protection: true
+  limiter_ceiling_dbfs: -1

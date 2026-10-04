@@ -1,0 +1,14 @@
+.build/
+build/
+dist/
+.DS_Store
+*.xcuserstate
+__pycache__/
+*.py[cod]
+# Local routing scenarios contain personal hardware identifiers.
+scenarios/
+.env
+.env.*
+*.p12
+*.p8
+*.key
