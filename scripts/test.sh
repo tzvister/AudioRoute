@@ -6,6 +6,7 @@ export SWIFTPM_MODULECACHE_OVERRIDE="$PWD/.build/module-cache"
 swift test --disable-sandbox
 scripts/test-driver.sh
 scripts/test-realtime.sh
+python3 scripts/test-installer-scripts.py
 binary_dir="$(swift build --show-bin-path --disable-sandbox)"
 python3 scripts/test-help.py "$binary_dir/audioroute"
 python3 scripts/test-setup.py "$binary_dir/audioroute"
