@@ -59,3 +59,5 @@ Have the user confirm guitar monitoring, absence of their own live microphone in
 Adjust voice/guitar only in the requested destination using `level set`; use `help level set` for exact syntax. Level changes persist in the daemon's saved state but do not update the original YAML. To save a reusable configuration reflecting the final balance, run `scenario export ID --json` and write only its `result` object to a JSON file. Reapplying an old YAML file restores its old levels.
 
 Finish with the chosen app devices, what was tested, the saved scenario/file, and any remaining user action. Keep personal hardware configurations local rather than committing them to the project.
+
+For channels that change or go silent during a call, see [channel troubleshooting](channel-troubleshooting.md). Capture before/after route, status, and device snapshots before changing the routing.
