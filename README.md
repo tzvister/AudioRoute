@@ -2,128 +2,61 @@
   <img src="assets/audioroute-social.png" alt="AudioRoute — Agent-first audio routing. Mix apps, instruments and microphones. Create virtual audio devices." width="900">
 </p>
 
-# AudioRoute — Mac audio routing for AI agents
+# AudioRoute
 
-**Describe what you want to hear. Let your agent build the route.**
+**Tell your agent what each person should hear. AudioRoute builds the mix on your Mac.**
 
-Mix your guitar, microphone, and app audio into exactly what each listener needs. AudioRoute gives your coding agent a self-describing macOS CLI to discover devices, create virtual microphones and speakers, save audio routing scenarios, and balance each mix independently.
+Mix apps, instruments, and microphones. Create virtual microphones and speakers that you can select in Zoom and other audio apps.
 
-Tell Codex, Claude Code, or another agent with terminal access what you want. You don’t have to start by writing a routing configuration.
+## 1. Install
 
-> **Development preview:** [v0.1.0-preview.1](https://github.com/tzvister/AudioRoute/releases/tag/v0.1.0-preview.1) includes a universal unsigned installer for testing. A signed, notarized installer has not been released yet. This repository is currently private; your agent needs access to it.
+Requires **macOS 14.2 or later**. One installer supports Apple Silicon and Intel Macs.
 
-## Start with your agent
+1. **[Download the newest installer from GitHub Releases](https://github.com/tzvister/AudioRoute/releases).** Open the top release and download its `.pkg` file under **Assets**. Use the newest release, including previews; this link stays current as new versions are published.
+2. Open the `.pkg` and follow macOS Installer. Approve the administrator prompt.
+3. Restart your Mac to load the audio driver.
+4. Open Terminal and run:
 
-Copy this into your agent, and change the setup to match yours:
+   ```sh
+   audioroute setup --start
+   ```
+
+The installer includes the CLI, background app, and audio driver. Updates use the same steps and preserve your saved routes.
+
+**Current releases are unsigned developer previews.** macOS may block installation. Apple signing and notarization are tracked in [issue #2](https://github.com/tzvister/AudioRoute/issues/2).
+
+## 2. Chat with Claude Code or Codex
+
+Open **Claude Code or Codex on this Mac**, with access to your terminal. Paste this, then describe your own setup:
 
 ```text
-Use AudioRoute to set up my Mac for a guitar lesson on Zoom.
+Use the installed AudioRoute CLI to set up my audio.
+Run audioroute --help --json and audioroute guide to learn how it works.
+Check audioroute setup, discover my devices, and help me test the result.
 
-Project: https://github.com/tzvister/AudioRoute
-Read docs/agent-quickstart.md, then use the CLI's built-in help.
+I want a guitar lesson on Zoom:
+- My guitar is on input 1 of my audio interface.
+- Use my AirPods microphone for my voice and AirPods for listening.
+- My teacher should hear my guitar and voice.
+- I should hear my guitar and the teacher, without monitoring my own voice.
+- Do not send the teacher's audio back to them.
 
-My guitar is plugged into input 1 of my audio interface.
-I want to use my AirPods microphone for my voice and listen on my AirPods.
-
-The teacher should hear my guitar and voice.
-I should hear my guitar and the teacher, but not my own microphone.
-The teacher's audio must not be sent back to them.
-
-Discover my actual devices and ask me only for choices you cannot determine.
-Create explicit “Guitar Lesson Send” and “Guitar Lesson Return” virtual devices,
-configure and save the scenario, and help me select them in Zoom.
-Validate the route, apply it, and test it with me. Balance my voice and guitar
-independently, and save the final levels so I can use the setup again.
-If AudioRoute is not installed, explain the available installation path first.
+Create and save this route. Help me choose its virtual microphone and
+speaker in Zoom, test it with me, and balance the levels.
 ```
 
-For a different setup, describe **your sources**, **what each destination should hear**, and **what it should never hear**. Your agent can use the same workflow to create a named scenario for that mix.
+Your agent learns the commands from the CLI itself. You approve any macOS microphone permission prompts and confirm what you hear.
 
-## Your guitar lesson, with the right mix for each person
+Keep chatting to adjust the mix:
 
-| Destination | What they hear |
-| --- | --- |
-| Your teacher on Zoom | Your guitar + your voice |
-| Your AirPods | Your guitar + the teacher |
+> “Lower my voice for the teacher.”
+>
+> “Turn up my guitar only in my headphones.”
+>
+> “Save this setup for my next lesson.”
 
-The teacher’s return is excluded from the outgoing mix. Your microphone is excluded from your headphones. Turning up the guitar for yourself doesn’t have to turn it up for the teacher.
+AudioRoute runs the audio locally. Claude Code or Codex controls it through the CLI.
 
-In Zoom, the selections are explicit:
+## More help
 
-| Zoom setting | Select |
-| --- | --- |
-| Microphone | **Guitar Lesson Send** |
-| Speaker | **Guitar Lesson Return** |
-
-```mermaid
-flowchart LR
-    Guitar["Guitar / audio interface"] --> Send["Guitar Lesson Send"]
-    Voice["Your microphone"] --> Send
-    Send --> ZoomIn["Zoom microphone → teacher"]
-    ZoomOut["Zoom speaker / teacher"] --> Return["Guitar Lesson Return"]
-    Return --> Mix["Your listening mix"]
-    Guitar --> Mix
-    Mix --> Headphones["Your headphones"]
-```
-
-Zoom sends its audio to the virtual Return speaker. AudioRoute mixes that with your guitar and plays the result through your headphones. This setup uses explicit device routing—no application audio interception is needed.
-
-## Keep adjusting in plain language
-
-Once your agent has created the route, ask for changes such as:
-
-- “My voice is louder than my guitar. Lower my voice for the teacher.”
-- “Turn my guitar up in my headphones, but leave the teacher’s mix alone.”
-- “Make the teacher a little louder for me.”
-- “Check whether Zoom is receiving audio, and help me test it.”
-- “Save these levels for my next lesson.”
-
-Your agent translates those requests into CLI operations. AudioRoute handles the audio locally; it does not include a built-in AI assistant or send your audio to an AI service.
-
-## Why AudioRoute?
-
-- **Separate mixes for separate listeners.** Control source levels independently in each destination.
-- **Named virtual audio devices.** Choose a virtual microphone or speaker directly in apps with audio device selectors.
-- **A setup you can reuse.** Named scenarios and level changes persist across background-app restarts.
-- **Built for agents and scripts.** Discoverable commands, JSON responses, configuration schema, examples, validation, and dry runs.
-- **Checks that help you troubleshoot.** Inspect connections, signal levels, device writes, and dropouts—then confirm the result by listening.
-
-Application audio capture is also available for apps that don’t offer an output selector. Your agent can choose that approach when it fits the setup.
-
-## Get AudioRoute on your Mac
-
-Requires **macOS 14.2 or later**. Universal binaries contain both Apple Silicon and Intel support; real-world Intel audio testing is still pending.
-
-**Today:** download the [developer preview](https://github.com/tzvister/AudioRoute/releases/tag/v0.1.0-preview.1) for evaluation, or build from source. The preview installer is unsigned and not notarized; macOS may block it under normal security settings. It is not the finished consumer install experience. An agent with access to the repository can follow the [source setup instructions](docs/development.md). That path requires Xcode and administrator approval to install the audio driver. It is not yet the intended one-download experience.
-
-**For the first signed release:** the planned flow is one `.pkg` from [GitHub Releases](https://github.com/tzvister/AudioRoute/releases), macOS Installer approval, a restart to load the driver, and:
-
-```sh
-audioroute setup --start
-```
-
-The package includes the CLI, background app, virtual audio driver, and transport service. End users won’t need a compiler or separate driver downloads. Your agent can then discover your devices and build the scenario. You handle macOS privacy prompts and confirm what you hear.
-
-## Prefer the terminal?
-
-Everything an agent needs to learn the CLI is available from the executable:
-
-```sh
-audioroute --help --json         # Discover commands and their arguments
-audioroute guide                # Learn the complete routing workflow
-audioroute schema               # Inspect the configuration schema
-audioroute examples             # Find editable scenario templates
-audioroute setup                # Check installation without changing audio
-```
-
-Help, the guide, schema, and examples work without a running background app. For detailed command syntax, use `audioroute help level set` or read the [CLI reference](docs/cli.md).
-
-## Before your first lesson
-
-Local testing has confirmed guitar monitoring in AirPods, guitar and voice in Zoom’s microphone playback test, independent levels, and Zoom audio through the explicit virtual Return device. A real remote lesson and clean-machine signed installation remain to be verified. See the [verification record](docs/verification.md).
-
-Bluetooth adds delay and can change playback behavior when its microphone is active. AudioRoute cannot remove that hardware latency. This preview supports one routing account per Mac. Successful configuration and moving meters are useful checks; your listening test confirms whether the intended sound reaches you.
-
-## Learn more
-
-[Agent quickstart](docs/agent-quickstart.md) · [CLI reference](docs/cli.md) · [Testing](docs/testing.md) · [Build from source](docs/development.md) · [Release packaging](docs/releasing.md)
+[Agent quickstart](docs/agent-quickstart.md) · [CLI reference](docs/cli.md) · [Troubleshooting channels](docs/channel-troubleshooting.md) · [Build from source](docs/development.md) · [Verification record](docs/verification.md)

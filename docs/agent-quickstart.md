@@ -14,7 +14,7 @@ audioroute examples --json
 audioroute setup --json
 ```
 
-These discovery commands and default setup do not start audio. Do not assume an installation is healthy merely because a binary exists. If missing, explain that no signed release is currently published; the developer path is in [development.md](development.md). Do not substitute an unsigned package for a signed public release or bypass Gatekeeper. The user handles required administrator and privacy approvals.
+These discovery commands and default setup do not start audio. Do not assume an installation is healthy merely because a binary exists. If missing, follow the [README installation steps](../README.md) and check the [newest GitHub release](https://github.com/tzvister/AudioRoute/releases), including previews. Current installers are unsigned developer previews; explain that status before installation. The source-build path is in [development.md](development.md). Do not bypass Gatekeeper. The user handles required administrator and privacy approvals.
 
 ## 2. Discover the actual devices
 
