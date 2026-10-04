@@ -80,7 +80,9 @@ jobs:
           python3 scripts/test-help.py build/release-artifacts/audioroute
           python3 scripts/test-setup.py build/release-artifacts/audioroute
           scripts/package-release.sh --unsigned --output-dir build/installer-check
+          scripts/package-uninstaller.sh --unsigned --output-dir build/installer-check --version "$AUDIOROUTE_VERSION"
           python3 scripts/test-release-package.py "build/installer-check/AudioRoute-$AUDIOROUTE_VERSION-universal-unsigned.pkg"
+          python3 scripts/test-uninstaller-package.py "build/installer-check/AudioRoute-$AUDIOROUTE_VERSION-uninstaller-unsigned.pkg"
 
       - name: Import Developer ID credentials into a temporary keychain
         shell: bash
@@ -128,6 +130,13 @@ jobs:
         run: |
           set -euo pipefail
           scripts/package-release.sh --artifacts build/release-artifacts --output-dir dist --version "$AUDIOROUTE_VERSION"
+          scripts/package-uninstaller.sh --output-dir dist --version "$AUDIOROUTE_VERSION"
+          uninstaller="dist/AudioRoute-$AUDIOROUTE_VERSION-uninstaller.pkg"
+          python3 scripts/test-uninstaller-package.py "$uninstaller"
+          pkgutil --check-signature "$uninstaller"
+          xcrun stapler validate "$uninstaller"
+          spctl --assess --type install --verbose "$uninstaller"
+          (cd dist && shasum -a 256 -c "AudioRoute-$AUDIOROUTE_VERSION-uninstaller.pkg.sha256")
           package="dist/AudioRoute-$AUDIOROUTE_VERSION-universal.pkg"
           pkgutil --check-signature "$package"
           xcrun stapler validate "$package"
@@ -141,6 +150,8 @@ jobs:
           path: |
             dist/AudioRoute-${{ env.AUDIOROUTE_VERSION }}-universal.pkg
             dist/AudioRoute-${{ env.AUDIOROUTE_VERSION }}-universal.pkg.sha256
+            dist/AudioRoute-${{ env.AUDIOROUTE_VERSION }}-uninstaller.pkg
+            dist/AudioRoute-${{ env.AUDIOROUTE_VERSION }}-uninstaller.pkg.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -152,10 +163,13 @@ jobs:
         run: |
           set -euo pipefail
           package="dist/AudioRoute-$AUDIOROUTE_VERSION-universal.pkg"
+          uninstaller="dist/AudioRoute-$AUDIOROUTE_VERSION-uninstaller.pkg"
           cat > "$RUNNER_TEMP/audioroute-release-notes.md" <<'NOTES'
           Universal macOS installer for Apple Silicon and Intel Macs. Requires macOS 14.2 or later.
 
           Download the `.pkg`, open it in Finder and follow Installer. The package installs the CLI, daemon app, virtual audio HAL plug-in and transport broker. Restart your Mac after installation, then run `audioroute setup` and `audioroute setup --start`.
+
+          To uninstall, download the uninstaller package, finish any calls or recordings, open it through macOS Installer, and restart afterward. Saved routing configuration is retained.
 
           The package is Developer ID signed, notarized by Apple, and stapled. A SHA-256 checksum is included. macOS microphone/system-audio permission and third-party input/output selections are still required for the sources and apps you choose.
 
@@ -167,9 +181,9 @@ jobs:
           if not json.load(open(sys.argv[1]))['isDraft']:
               raise SystemExit('Refusing to replace assets on an already published release.')
           PY
-            gh release upload "$RELEASE_TAG" "$package" "$package.sha256" --clobber
+            gh release upload "$RELEASE_TAG" "$package" "$package.sha256" "$uninstaller" "$uninstaller.sha256" --clobber
           else
-            gh release create "$RELEASE_TAG" "$package" "$package.sha256" --verify-tag --draft \
+            gh release create "$RELEASE_TAG" "$package" "$package.sha256" "$uninstaller" "$uninstaller.sha256" --verify-tag --draft \
               --title "AudioRoute $AUDIOROUTE_VERSION" --notes-file "$RUNNER_TEMP/audioroute-release-notes.md"
           fi
 
