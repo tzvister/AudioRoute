@@ -90,6 +90,25 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(engine.status(id: "absent")["working"] as? Bool, false)
         XCTAssertEqual(engine.permissions()["system_audio_preflight_available"] as? Bool, false)
     }
+    func testStatusDistinguishesChannelNumberFromChannelCount() throws {
+        let spec = ScenarioSpec(
+            scenario: ScenarioMetadata(id: "channel-selection-test"),
+            inputs: ["guitar": InputSpec(
+                type: "device_input", device: "coreaudio:device:nonexistent-channel-test", channels: [9])],
+            outputs: ["monitor": OutputSpec(
+                type: "device_output", device: "coreaudio:device:nonexistent-output-test",
+                channels: .indices([3, 4]), mix: ["guitar": MixSpec()])])
+        let engine = Engine()
+        try engine.apply(spec)
+        defer { engine.remove(id: spec.scenario.id) }
+        let status = engine.status(id: spec.scenario.id)
+        let inputs = status["inputs"] as? [String: [String: Any]]
+        let outputs = status["outputs"] as? [String: [String: Any]]
+        XCTAssertEqual(inputs?["guitar"]?["channels"] as? Int, 1)
+        XCTAssertEqual(inputs?["guitar"]?["channel_indices"] as? [Int], [9])
+        XCTAssertEqual(outputs?["monitor"]?["channels"] as? Int, 2)
+        XCTAssertEqual(outputs?["monitor"]?["channel_indices"] as? [Int], [3, 4])
+    }
     func testMissingEndpointsRemainDegradedAndNeverVerified() throws {
         let spec = ScenarioSpec(scenario: ScenarioMetadata(id: "engine-test", name: "Engine test"), inputs: ["missing": InputSpec(type: "device_input", device: "coreaudio:device:nonexistent-engine-test", channels: [1])], outputs: ["discard": OutputSpec(type: "device_output", device: "coreaudio:device:nonexistent-output-engine-test", channels: .count(1), mix: ["missing": MixSpec()])])
         let engine = Engine(); try engine.apply(spec)

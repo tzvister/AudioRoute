@@ -31,10 +31,12 @@ private final class SourceNode {
     var issue: String?
     var resolved = ""
     var applicationRunning: Bool?
-    var channels: Int
+    var channels: Int { channelIndices.count }
+    let channelIndices: [Int]
     let rate: Double
     init(channels: [Int], rate: Double) throws {
-        self.channels = channels.count; self.rate = rate
+        self.channelIndices = channels
+        self.rate = rate
         let indices = channels.map { UInt32($0 - 1) }
         guard let p = indices.withUnsafeBufferPointer({ ar_source_create(UInt32(indices.count), $0.baseAddress, rate) }) else { throw EngineError("E_RESOURCE_LIMIT", "Cannot allocate source audio buffers.") }
         pointer = p
@@ -54,10 +56,12 @@ private final class SinkNode {
     var expectsSignal = false
     var issue: String?
     var resolved = ""
-    var channels: Int
+    var channels: Int { channelIndices.count }
+    let channelIndices: [Int]
     let rate: Double
     init(channels: [Int], rate: Double, ceiling: Float) throws {
-        self.channels = channels.count; self.rate = rate
+        self.channelIndices = channels
+        self.rate = rate
         let indices = channels.map { UInt32($0 - 1) }
         guard let p = indices.withUnsafeBufferPointer({ ar_sink_create(UInt32(indices.count), $0.baseAddress, rate, ceiling) }) else { throw EngineError("E_RESOURCE_LIMIT", "Cannot allocate destination audio buffers.") }
         pointer = p
@@ -149,6 +153,7 @@ public final class Engine {
             let stats = ar_source_stats(source.pointer); var json = statsJSON(stats)
             if source.tap != 0 && stats.callbacks > 0 { tapPermissionObserved = true }
             json["connected"] = source.connected; json["resolved_device"] = source.resolved; json["channels"] = source.channels; json["sample_rate"] = source.rate
+            json["channel_indices"] = source.channelIndices
             if let running = source.applicationRunning { json["application_running"] = running; json["tap_active"] = source.tap != 0 }
             if let issue = source.issue { json["issue"] = issue }
             degraded = degraded || !source.connected
@@ -160,6 +165,7 @@ public final class Engine {
         for (name, sink) in runtime.sinks {
             let stats = ar_sink_stats(sink.pointer); var json = statsJSON(stats)
             json["connected"] = sink.connected; json["resolved_device"] = sink.resolved; json["channels"] = sink.channels; json["sample_rate"] = sink.rate
+            json["channel_indices"] = sink.channelIndices
             json["master_gain_db"] = runtime.spec.outputs[name]?.masterGainDB ?? 0
             if let issue = sink.issue { json["issue"] = issue }
             if sink.transport == nil && sink.device != nil {
@@ -274,7 +280,7 @@ public final class Engine {
         let virtualIDs = Set(registry().compactMap { $0["id"] as? String })
         let devices = Hardware.allDevices().filter { device in
             physicalIdentifiers.contains(device.uid) || physicalIdentifiers.contains("coreaudio:device:" + device.uid) || physicalIdentifiers.contains(device.name) || virtualIDs.contains(device.uid.replacingOccurrences(of: "org.audioroute.virtual.", with: ""))
-        }.map { "\($0.uid):\($0.id):\($0.rate):\($0.alive):\($0.input):\($0.output)" }.sorted().joined(separator: ";")
+        }.map { "\($0.uid):\($0.id):\($0.rate):\($0.alive):\($0.input):\($0.output):\($0.streamLayoutSignature)" }.sorted().joined(separator: ";")
         let applications = Set(spec.inputs.values.filter { $0.type == "application_output" || $0.type == "application" }.compactMap { $0.application?.replacingOccurrences(of: "app:", with: "") })
         let processes = Hardware.processes().filter { applications.contains($0.bundle) || applications.contains("pid:\($0.pid)") }.map { "\($0.bundle):\($0.id):\($0.pid)" }.sorted().joined(separator: ";")
         let entries = registry().map { "\($0["id"] ?? ""):\($0["inputChannels"] ?? 0):\($0["outputChannels"] ?? 0):\($0["sampleRate"] ?? 0)" }.sorted().joined(separator: ";")

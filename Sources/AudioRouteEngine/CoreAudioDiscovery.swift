@@ -41,6 +41,21 @@ struct Hardware {
         let err = ranges.withUnsafeMutableBytes { AudioObjectGetPropertyData(object, &a, 0, nil, &size, $0.baseAddress!) }
         return err == noErr ? ranges.map { [$0.mMinimum, $0.mMaximum] } : []
     }
+    static func preferredStereoChannels(_ object: AudioObjectID, scope: AudioObjectPropertyScope) -> [Int] {
+        var a = address(kAudioDevicePropertyPreferredChannelsForStereo, scope: scope)
+        var pair = [UInt32](repeating: 0, count: 2)
+        var size = UInt32(2 * MemoryLayout<UInt32>.size)
+        let error = pair.withUnsafeMutableBytes { AudioObjectGetPropertyData(object, &a, 0, nil, &size, $0.baseAddress!) }
+        guard error == noErr, size == 2 * MemoryLayout<UInt32>.size else { return [] }
+        return pair.map(Int.init)
+    }
+    static func streams(_ object: AudioObjectID, scope: AudioObjectPropertyScope) -> [StreamInfo] {
+        ids(object, kAudioDevicePropertyStreams, scope: scope).map { stream in
+            StreamInfo(id: stream,
+                startingChannel: value(stream, kAudioStreamPropertyStartingChannel, fallback: UInt32(0)),
+                format: value(stream, kAudioStreamPropertyVirtualFormat, fallback: AudioStreamBasicDescription()))
+        }
+    }
     static func allDevices() -> [DeviceInfo] {
         ids(kAudioHardwarePropertyDevices).compactMap { id in
             guard let uid = string(id, kAudioDevicePropertyDeviceUID) else { return nil }
@@ -48,7 +63,9 @@ struct Hardware {
                 input: channels(id, scope: kAudioObjectPropertyScopeInput), output: channels(id, scope: kAudioObjectPropertyScopeOutput),
                 rate: value(id, kAudioDevicePropertyNominalSampleRate, fallback: 0.0),
                 transport: value(id, kAudioDevicePropertyTransportType, fallback: UInt32(0)),
-                alive: value(id, kAudioDevicePropertyDeviceIsAlive, fallback: UInt32(0)) != 0)
+                alive: value(id, kAudioDevicePropertyDeviceIsAlive, fallback: UInt32(0)) != 0,
+                inputStreams: streams(id, scope: kAudioObjectPropertyScopeInput),
+                outputStreams: streams(id, scope: kAudioObjectPropertyScopeOutput))
         }
     }
     static func resolve(_ identifier: String?, devices: [DeviceInfo]) throws -> DeviceInfo? {
@@ -79,13 +96,36 @@ struct Hardware {
         }
     }
 }
+struct StreamInfo {
+    let id: AudioObjectID
+    let startingChannel: UInt32
+    let format: AudioStreamBasicDescription
+    var json: [String: Any] {
+        ["object_id": id, "starting_channel": startingChannel, "channels": format.mChannelsPerFrame,
+         "sample_rate": format.mSampleRate, "format_id": format.mFormatID, "format_flags": format.mFormatFlags,
+         "bits_per_channel": format.mBitsPerChannel, "bytes_per_frame": format.mBytesPerFrame]
+    }
+    var signature: String {
+        "\(id):\(startingChannel):\(format.mChannelsPerFrame):\(format.mSampleRate):\(format.mFormatID):\(format.mFormatFlags):\(format.mBitsPerChannel):\(format.mBytesPerFrame)"
+    }
+}
 struct DeviceInfo {
     var id: AudioDeviceID; var uid: String; var name: String; var input: Int; var output: Int; var rate: Double; var transport: UInt32; var alive: Bool
+    var inputStreams: [StreamInfo]; var outputStreams: [StreamInfo]
+    var streamLayoutSignature: String {
+        // Stream order is significant: sorting would hide channel-layout changes.
+        let input = inputStreams.map { $0.signature }.joined(separator: ",")
+        let output = outputStreams.map { $0.signature }.joined(separator: ",")
+        return input + "/" + output
+    }
     var json: [String: Any] {
         let transports: [UInt32: String] = [kAudioDeviceTransportTypeBuiltIn: "built_in", kAudioDeviceTransportTypeUSB: "usb", kAudioDeviceTransportTypeBluetooth: "bluetooth", kAudioDeviceTransportTypeBluetoothLE: "bluetooth_le", kAudioDeviceTransportTypeVirtual: "virtual", kAudioDeviceTransportTypeAggregate: "aggregate", kAudioDeviceTransportTypeHDMI: "hdmi", kAudioDeviceTransportTypeDisplayPort: "displayport", kAudioDeviceTransportTypeThunderbolt: "thunderbolt"]
         let ranges = Hardware.sampleRates(id)
         return ["id": "coreaudio:device:\(uid)", "uid": uid, "name": name, "object_id": id, "transport": transports[transport] ?? "unknown", "input_channels": input, "output_channels": output, "current_sample_rate": rate, "sample_rate_ranges": ranges, "sample_rates": ranges.filter { $0[0] == $0[1] }.map { $0[0] }, "connected": alive,
             "buffer_frames": Hardware.value(id, kAudioDevicePropertyBufferFrameSize, fallback: UInt32(0)),
+            "input_preferred_stereo_channels": Hardware.preferredStereoChannels(id, scope: kAudioObjectPropertyScopeInput),
+            "output_preferred_stereo_channels": Hardware.preferredStereoChannels(id, scope: kAudioObjectPropertyScopeOutput),
+            "input_streams": inputStreams.map { $0.json }, "output_streams": outputStreams.map { $0.json },
             "input_latency_frames": Hardware.value(id, kAudioDevicePropertyLatency, fallback: UInt32(0), scope: kAudioObjectPropertyScopeInput),
             "output_latency_frames": Hardware.value(id, kAudioDevicePropertyLatency, fallback: UInt32(0), scope: kAudioObjectPropertyScopeOutput)]
     }
