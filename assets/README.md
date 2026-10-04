@@ -1,6 +1,8 @@
 # AudioRoute identity
 
-`audioroute-header.png` is the README header logo. Generated with the built-in image generation tool and visually reviewed for wordmark accuracy and layout.
+`audioroute-social.png` is the current README header and social graphic. Its generation prompt is in [audioroute-social-prompt.md](audioroute-social-prompt.md).
+
+`audioroute-header.png` is the earlier header logo, retained as a brand reference. Generated with the built-in image generation tool and visually reviewed for wordmark accuracy and layout.
 
 Prompt:
 

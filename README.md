@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/audioroute-header.png" alt="AudioRoute — Agent-first audio routing. Mix apps, instruments and microphones. Create virtual audio devices." width="900">
+  <img src="assets/audioroute-social.png" alt="AudioRoute — Agent-first audio routing. Mix apps, instruments and microphones. Create virtual audio devices." width="900">
 </p>
 
 # AudioRoute — Mac audio routing for AI agents
