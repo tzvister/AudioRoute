@@ -139,7 +139,7 @@ EOF
 mkdir -p "$work/resources"
 cp "$project_root/packaging/resources/"*.html "$work/resources/"
 if [[ "$unsigned" == true ]]; then
-  /usr/bin/sed -i '' 's/AudioRoute installation/AudioRoute unsigned development installation/' "$work/resources/welcome.html"
+  /usr/bin/sed -i '' 's/Welcome to AudioRoute/Welcome to AudioRoute — unsigned preview/' "$work/resources/welcome.html"
 fi
 if [[ "$unsigned" == true ]]; then
   /usr/bin/productbuild --distribution "$work/Distribution.xml" --resources "$work/resources" --package-path "$work" "$work/AudioRoute.pkg"

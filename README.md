@@ -8,29 +8,14 @@
 
 Mix apps, instruments, and microphones. Create virtual microphones and speakers that you can select in Zoom and other audio apps.
 
-## 1. Install
+## 1. Chat with Claude Code or Codex
 
-Requires **macOS 14.2 or later**. One installer supports Apple Silicon and Intel Macs.
+Imagine telling your agent: **“Let my guitar teacher hear my guitar and voice, while I hear my guitar and the teacher.”** AudioRoute makes that mix possible—and lets you change it just by asking.
 
-1. **[Download the newest installer from GitHub Releases](https://github.com/tzvister/AudioRoute/releases).** Open the top release and download its **universal installer** `.pkg` under **Assets** (the file without `uninstaller` in its name). Use the newest release, including previews; this link stays current as new versions are published.
-2. Open the `.pkg` and follow macOS Installer. Approve the administrator prompt.
-3. Restart your Mac to load the audio driver.
-4. Open Terminal and run:
-
-   ```sh
-   audioroute setup --start
-   ```
-
-The installer includes the CLI, background app, and audio driver. Updates use the same steps and preserve your saved routes.
-
-**Current releases are unsigned developer previews.** macOS may block installation. Apple signing and notarization are tracked in [issue #2](https://github.com/tzvister/AudioRoute/issues/2).
-
-## 2. Chat with Claude Code or Codex
-
-Open **Claude Code or Codex on this Mac**, with access to your terminal. Paste this, then describe your own setup:
+Once installed, open **Claude Code or Codex on this Mac**, with access to your terminal. Paste this, or describe your own setup:
 
 ```text
-Use the installed AudioRoute CLI to set up my audio.
+Use AudioRoute to set up my audio.
 Run audioroute --help --json and audioroute guide to learn how it works.
 Check audioroute setup, discover my devices, and help me test the result.
 
@@ -56,6 +41,25 @@ Keep chatting to adjust the mix:
 > “Save this setup for my next lesson.”
 
 AudioRoute runs the audio locally. Claude Code or Codex controls it through the CLI.
+
+## 2. Install AudioRoute
+
+Ready to try it? You’ll need **macOS 14.2 or later**, on an Apple Silicon or Intel Mac.
+
+1. **[Get the newest download](https://github.com/tzvister/AudioRoute/releases).** Open the top release, then choose the file ending in **`universal-unsigned.pkg`** under **Assets**. When signed installers become available, choose **`universal.pkg`**.
+2. Open the download and follow the installer. Your Mac will ask for your password to allow installation.
+3. Restart your Mac, then ask your agent:
+
+   ```text
+   Run audioroute setup --start, check that AudioRoute is ready,
+   and help me create my audio setup.
+   ```
+
+**What goes on your Mac?** The AudioRoute app, a command your agent can use, and a small background service with an audio driver. Together, they create virtual microphones and speakers that apps such as Zoom can use. Your agent controls which sounds go into each mix.
+
+You can **uninstall AudioRoute at any time** using the removal package below. Updates and uninstalling keep your saved setups, so you can use them again later.
+
+**A quick heads-up:** these are early, unsigned previews, so macOS may block the download. We’re working toward Apple-signed installers; progress is tracked in [issue #2](https://github.com/tzvister/AudioRoute/issues/2).
 
 ## Uninstall
 
