@@ -4,7 +4,7 @@ The release artifact is one universal `.pkg` containing `/usr/local/bin/audiorou
 
 ## Current readiness
 
-Universal payload and unsigned installer assembly have been tested locally. The package was expanded and inspected without installation. Developer ID signing, notarization, a fresh-machine installation, and Intel audio behavior remain unverified. Do not publish the unsigned package as a trusted release. The repository is [tzvister/audio-router](https://github.com/tzvister/audio-router) and is private. Apple signing credentials have not been configured.
+Universal payload and unsigned installer assembly have been tested locally. The package was expanded and inspected without installation. Developer ID signing, notarization, a fresh-machine installation, and Intel audio behavior remain unverified. Do not publish the unsigned package as a trusted release. The repository is [tzvister/AudioRoute](https://github.com/tzvister/AudioRoute) and is private. Apple signing credentials have not been configured.
 
 ## Build and inspect locally
 
