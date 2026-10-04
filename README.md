@@ -8,6 +8,39 @@
 
 Mix apps, instruments, and microphones. Create virtual microphones and speakers that you can select in Zoom and other audio apps.
 
+## Your guitar lesson, with the right mix for each person
+
+| Destination | What they hear |
+| --- | --- |
+| Your teacher on Zoom | Your guitar + your voice |
+| Your AirPods | Your guitar + the teacher |
+
+Your teacher hears your guitar and voice. You hear your guitar and the teacher, without your own microphone playing back in your ears. The teacher’s audio never loops back into their call.
+
+Each mix has its own levels: turn up your guitar in your AirPods without changing what the teacher hears.
+
+Your agent creates two virtual devices. Select them in Zoom:
+
+| Zoom setting | Select |
+| --- | --- |
+| Microphone | **Guitar Lesson Send** |
+| Speaker | **Guitar Lesson Return** |
+
+```mermaid
+flowchart LR
+    Guitar["Guitar / audio interface"] --> Send["Guitar Lesson Send"]
+    Voice["Your microphone"] --> Send
+    Send --> ZoomIn["Zoom microphone → teacher"]
+    ZoomOut["Zoom speaker / teacher"] --> Return["Guitar Lesson Return"]
+    Return --> Mix["Your listening mix"]
+    Guitar --> Mix
+    Mix --> Headphones["Your headphones"]
+```
+
+Zoom sends the teacher’s audio to **Guitar Lesson Return**. AudioRoute adds your guitar and plays that mix through your AirPods. **Guitar Lesson Send** carries your guitar and voice to the teacher.
+
+Describe the lesson to your agent, and it can discover your devices, create this route, help you test it, and save it for next time.
+
 ## 1. Chat with Claude Code or Codex
 
 Imagine telling your agent: **“Let my guitar teacher hear my guitar and voice, while I hear my guitar and the teacher.”** AudioRoute makes that mix possible—and lets you change it just by asking.
