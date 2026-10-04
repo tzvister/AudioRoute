@@ -5,8 +5,8 @@ This is the developer-preview path. Ordinary users are intended to install a sig
 Requires macOS 14.2 or later and Xcode with its command-line tools selected.
 
 ```sh
-git clone https://github.com/tzvister/tzvi-audio-router.git
-cd tzvi-audio-router
+git clone https://github.com/tzvister/audio-router.git
+cd audio-router
 scripts/build.sh
 scripts/test.sh
 ```

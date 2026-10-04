@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '!v*-*' # Preview assets are released separately; this workflow requires signing.
   workflow_dispatch:
     inputs:
       tag:

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/audioroute-header.png" alt="AudioRoute — Your audio. Your mix. Audio signal paths joining and branching into independent mixes." width="900">
+</p>
+
 # AudioRoute — Mac audio routing for AI agents
 
 **Describe what you want to hear. Let your agent build the route.**
@@ -6,7 +10,7 @@ Mix your guitar, microphone, and app audio into exactly what each listener needs
 
 Tell Codex, Claude Code, or another agent with terminal access what you want. You don’t have to start by writing a routing configuration.
 
-> **Development preview:** the source and local installer tooling are available. A signed, notarized installer has not been released yet. This repository is currently private; your agent needs access to it.
+> **Development preview:** [v0.1.0-preview.1](https://github.com/tzvister/audio-router/releases/tag/v0.1.0-preview.1) includes a universal unsigned installer for testing. A signed, notarized installer has not been released yet. This repository is currently private; your agent needs access to it.
 
 ## Start with your agent
 
@@ -15,7 +19,7 @@ Copy this into your agent, and change the setup to match yours:
 ```text
 Use AudioRoute to set up my Mac for a guitar lesson on Zoom.
 
-Project: https://github.com/tzvister/tzvi-audio-router
+Project: https://github.com/tzvister/audio-router
 Read docs/agent-quickstart.md, then use the CLI's built-in help.
 
 My guitar is plugged into input 1 of my audio interface.
@@ -90,9 +94,9 @@ Application audio capture is also available for apps that don’t offer an outpu
 
 Requires **macOS 14.2 or later**. Universal binaries contain both Apple Silicon and Intel support; real-world Intel audio testing is still pending.
 
-**Today:** this is a developer preview. An agent with access to the repository can follow the [source setup instructions](docs/development.md). That path requires Xcode and administrator approval to install the audio driver. It is not yet the intended one-download experience.
+**Today:** download the [developer preview](https://github.com/tzvister/audio-router/releases/tag/v0.1.0-preview.1) for evaluation, or build from source. The preview installer is unsigned and not notarized; macOS may block it under normal security settings. It is not the finished consumer install experience. An agent with access to the repository can follow the [source setup instructions](docs/development.md). That path requires Xcode and administrator approval to install the audio driver. It is not yet the intended one-download experience.
 
-**For the first signed release:** the planned flow is one `.pkg` from [GitHub Releases](https://github.com/tzvister/tzvi-audio-router/releases), macOS Installer approval, a restart to load the driver, and:
+**For the first signed release:** the planned flow is one `.pkg` from [GitHub Releases](https://github.com/tzvister/audio-router/releases), macOS Installer approval, a restart to load the driver, and:
 
 ```sh
 audioroute setup --start
