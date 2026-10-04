@@ -25,7 +25,9 @@ if [[ ! -e "$shared" ]]; then
 else
   for path in "$shared" "$shared/devices"; do
     [[ -d "$path" && ! -L "$path" ]] || fail "Existing shared audio folders need repair; no permissions were changed."
-    [[ "$(/usr/bin/stat -f '%Su:%Sg:%Lp' "$path")" == "$owner:_coreaudiod:2750" ]] || fail "Existing shared audio folder permissions need repair; no permissions were changed."
+    # %Lp omits special permission bits on macOS; mask the full octal mode.
+    mode="$(/usr/bin/stat -f '%p' "$path")"
+    [[ "$(/usr/bin/stat -f '%Su:%Sg' "$path")" == "$owner:_coreaudiod" && "$((8#$mode & 07777))" == "$((02750))" ]] || fail "Existing shared audio folder permissions need repair; no permissions were changed."
   done
 fi
 # pkgbuild's payload owns the installed app, driver, CLI and launch plist as root.
